@@ -1,0 +1,321 @@
+<html>
+<script src='/Public/merchant/js/jquery/jquery-1.11.1.min.js'></script>
+<!-- <script src='/Public/merchant/js/socket.io.js'></script> -->
+
+<script type="text/javascript" src="/Public/merchant/js/swfobject.js"></script>
+<script type="text/javascript" src="/Public/merchant/js/web_socket.js"></script>
+
+<!-- <form action="{:U('Home/Index/saveImg')}" method="POST" enctype="multipart/form-data">
+    <h5 class="mui-content-padded">图片上传</h5>
+    <div class="mui-card">
+    <div class="mui-input-row mui-left">
+    <label style="width:0px;height:0px;"></label>
+    <input class=" mui-btn-primary pull-right" type="file" id="images" name='photo'/>
+    <input type='submit' value='提交'/>
+</form> -->
+<input type='button' onclick="onSubmit();" value="发送">
+</div>
+  <script type="text/javascript">
+    if (typeof console == "undefined") {    this.console = { log: function (msg) {  } };}
+    WEB_SOCKET_SWF_LOCATION = "/Public/merchant/swf/WebSocketMain.swf";
+    WEB_SOCKET_DEBUG = true;
+    var ws, name, client_list={};
+
+    // 连接服务端
+    function connect() {
+       // 创建websocket
+       ws = new WebSocket("ws://"+document.domain+":8282");
+       // 当socket连接打开时，输入用户名
+       ws.onopen = onopen;
+       // 当有消息时根据消息类型显示不同信息
+       ws.onmessage = onmessage; 
+       ws.onclose = function() {
+          console.log("连接关闭，定时重连");
+          connect();
+       };
+       ws.onerror = function() {
+          console.log("出现错误");
+       };
+    }
+
+    // 连接建立时发送登录信息
+    function onopen()
+    {
+        var mb = myBrowser();
+        switch(mb){
+            case 'IE':
+                uid = '220';
+                uname = "what";
+                gid = '1';
+            break;
+            case 'FF':
+                 uid = '218';
+                 uname = "liuhang";
+                 gid = '1';
+            break;
+            default:
+                uid = '212';
+                uname = "suiking";
+                gid = '1';
+        }
+        // 登录
+        var login_data = '{"type":"login","client_name":"'+uname+'","room_id":"'+gid+'","uid":"'+uid+'"}';
+        console.log("websocket握手成功，发送登录数据:"+login_data);
+        ws.send(login_data);
+    }
+
+    // 服务端发来消息时
+    function onmessage(e)
+    {
+        console.log(e.data);
+        var data = eval("("+e.data+")");
+        switch(data['type']){
+            // 服务端ping客户端
+            case 'ping':
+                ws.send('{"type":"pong"}');
+                break;;
+            // 登录 更新用户列表
+            case 'login':
+                //{"type":"login","client_id":xxx,"client_name":"xxx","client_list":"[...]","time":"xxx"}
+                // say(data['client_id'], data['client_name'],  data['client_name']+' 加入了聊天室', data['time']);
+                if(data['client_list'])
+                {
+                    client_list = data['client_list'];
+                }
+                else
+                {
+                    client_list[data['client_id']] = data['client_name']; 
+                }
+                // flush_client_list();
+                console.log(data['client_name']+"登录成功");
+                break;
+            // 发言
+            case 'say':
+                //{"type":"say","from_client_id":xxx,"to_client_id":"all/client_id","content":"xxx","time":"xxx"}
+                say(data['from_client_id'], data['from_client_name'], data['content'], data['time']);
+                break;
+            // 用户退出 更新用户列表
+            case 'logout':
+                //{"type":"logout","client_id":xxx,"time":"xxx"}
+                say(data['from_client_id'], data['from_client_name'], data['from_client_name']+' 退出了', data['time']);
+                delete client_list[data['from_client_id']];
+                // flush_client_list();
+        }
+    }
+
+    // 提交对话
+    function onSubmit() {
+      var input = '123789--what';
+      var to_client_id = '212'
+      var to_client_name = 'suiking'
+      // ws.send('{"type":"say","to_client_id":"'+to_client_id+'","to_client_name":"'+to_client_name+'","content":"'+input.value.replace(/"/g, '\\"').replace(/\n/g,'\\n').replace(/\r/g, '\\r')+'"}');
+      ws.send('{"type":"say","to_client_id":"'+to_client_id+'","to_client_name":"'+to_client_name+'","content":"'+input+'"}');
+    }
+
+    // 发言
+    function say(from_client_id, from_client_name, content, time){
+        $("#dialog").append('<div class="speech_item"><img src="http://lorempixel.com/38/38/?'+from_client_id+'" class="user_icon" /> '+from_client_name+' <br> '+time+'<div style="clear:both;"></div><p class="triangle-isosceles top">'+content+'</p> </div>');
+    }
+
+    $(function(){
+        connect();
+        select_client_id = 'all';
+        /*$("#client_list").change(function(){
+             select_client_id = $("#client_list option:selected").attr("value");
+        });*/
+    });
+
+    function myBrowser(){
+        var userAgent = navigator.userAgent; //取得浏览器的userAgent字符串
+        var isOpera = userAgent.indexOf("Opera") > -1;
+        if (isOpera) {
+            return "Opera"
+        }; //判断是否Opera浏览器
+        if (userAgent.indexOf("Firefox") > -1) {
+            return "FF";
+        } //判断是否Firefox浏览器
+        if (userAgent.indexOf("Chrome") > -1){
+            return "Chrome";
+        }
+        if (userAgent.indexOf("Safari") > -1) {
+            return "Safari";
+        } //判断是否Safari浏览器
+        if (userAgent.indexOf("compatible") > -1 && userAgent.indexOf("MSIE") > -1 && !isOpera) {
+            return "IE";
+        }; //判断是否IE浏览器
+    }
+  </script>
+
+
+<script>
+/*document.domain = '{$domain}';
+$(document).ready(function () {
+    var uid = '';
+    var uname = "";
+    var gid = '';
+    var mb = myBrowser();
+    switch(mb){
+        case 'IE':
+            uid = '220';
+            uname = "what";
+            gid = '1';
+        break;
+        case 'FF':
+             uid = '218';
+             uname = "liuhang";
+             gid = '1';
+        break;
+        default:
+            uid = '212';
+            uname = "suiking";
+            gid = '2';
+    }
+    var domain = '{$url_site}';
+    // 连接服务端
+    var socket = io(domain+':2120');
+    // 连接后登录
+    socket.on('connect', function(){
+        var params = uid+'-'+uname+'-'+gid+'-Shake';
+        var b = new Base64();
+        var base_str = b.encode(params); 
+        console.log(base_str);
+        socket.emit('login', base_str)
+    });
+    // 后端推送来消息时
+    socket.on('new_msg', function(msg){
+        console.log(msg);
+    });
+    // 后端推送来在线数据时
+    socket.on('update_online_count', function(online_stat){
+        $('#online_box').html(online_stat);
+    });
+});*/
+    /** 
+    *  Base64 encode / decode
+    */  
+       
+    /*function Base64() {  
+       
+        // private property  
+        _keyStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";  
+       
+        // public method for encoding  
+        this.encode = function (input) {  
+            var output = "";  
+            var chr1, chr2, chr3, enc1, enc2, enc3, enc4;  
+            var i = 0;  
+            input = _utf8_encode(input);  
+            while (i < input.length) {  
+                chr1 = input.charCodeAt(i++);  
+                chr2 = input.charCodeAt(i++);  
+                chr3 = input.charCodeAt(i++);  
+                enc1 = chr1 >> 2;  
+                enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);  
+                enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);  
+                enc4 = chr3 & 63;  
+                if (isNaN(chr2)) {  
+                    enc3 = enc4 = 64;  
+                } else if (isNaN(chr3)) {  
+                    enc4 = 64;  
+                }  
+                output = output +  
+                _keyStr.charAt(enc1) + _keyStr.charAt(enc2) +  
+                _keyStr.charAt(enc3) + _keyStr.charAt(enc4);  
+            }  
+            return output;  
+        }  
+       
+        // public method for decoding  
+        this.decode = function (input) {  
+            var output = "";  
+            var chr1, chr2, chr3;  
+            var enc1, enc2, enc3, enc4;  
+            var i = 0;  
+            input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "");  
+            while (i < input.length) {  
+                enc1 = _keyStr.indexOf(input.charAt(i++));  
+                enc2 = _keyStr.indexOf(input.charAt(i++));  
+                enc3 = _keyStr.indexOf(input.charAt(i++));  
+                enc4 = _keyStr.indexOf(input.charAt(i++));  
+                chr1 = (enc1 << 2) | (enc2 >> 4);  
+                chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);  
+                chr3 = ((enc3 & 3) << 6) | enc4;  
+                output = output + String.fromCharCode(chr1);  
+                if (enc3 != 64) {  
+                    output = output + String.fromCharCode(chr2);  
+                }  
+                if (enc4 != 64) {  
+                    output = output + String.fromCharCode(chr3);  
+                }  
+            }  
+            output = _utf8_decode(output);  
+            return output;  
+        }  
+       
+        // private method for UTF-8 encoding  
+        _utf8_encode = function (string) {  
+            string = string.replace(/\r\n/g,"\n");  
+            var utftext = "";  
+            for (var n = 0; n < string.length; n++) {  
+                var c = string.charCodeAt(n);  
+                if (c < 128) {  
+                    utftext += String.fromCharCode(c);  
+                } else if((c > 127) && (c < 2048)) {  
+                    utftext += String.fromCharCode((c >> 6) | 192);  
+                    utftext += String.fromCharCode((c & 63) | 128);  
+                } else {  
+                    utftext += String.fromCharCode((c >> 12) | 224);  
+                    utftext += String.fromCharCode(((c >> 6) & 63) | 128);  
+                    utftext += String.fromCharCode((c & 63) | 128);  
+                }  
+       
+            }  
+            return utftext;  
+        }  
+       
+        // private method for UTF-8 decoding  
+        _utf8_decode = function (utftext) {  
+            var string = "";  
+            var i = 0;  
+            var c = c1 = c2 = 0;  
+            while ( i < utftext.length ) {  
+                c = utftext.charCodeAt(i);  
+                if (c < 128) {  
+                    string += String.fromCharCode(c);  
+                    i++;  
+                } else if((c > 191) && (c < 224)) {  
+                    c2 = utftext.charCodeAt(i+1);  
+                    string += String.fromCharCode(((c & 31) << 6) | (c2 & 63));  
+                    i += 2;  
+                } else {  
+                    c2 = utftext.charCodeAt(i+1);  
+                    c3 = utftext.charCodeAt(i+2);  
+                    string += String.fromCharCode(((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));  
+                    i += 3;  
+                }  
+            }  
+            return string;  
+        }  
+    }  
+    function myBrowser(){
+        var userAgent = navigator.userAgent; //取得浏览器的userAgent字符串
+        var isOpera = userAgent.indexOf("Opera") > -1;
+        if (isOpera) {
+            return "Opera"
+        }; //判断是否Opera浏览器
+        if (userAgent.indexOf("Firefox") > -1) {
+            return "FF";
+        } //判断是否Firefox浏览器
+        if (userAgent.indexOf("Chrome") > -1){
+            return "Chrome";
+        }
+        if (userAgent.indexOf("Safari") > -1) {
+            return "Safari";
+        } //判断是否Safari浏览器
+        if (userAgent.indexOf("compatible") > -1 && userAgent.indexOf("MSIE") > -1 && !isOpera) {
+            return "IE";
+        }; //判断是否IE浏览器
+    }*/
+</script>
+
+</html>
