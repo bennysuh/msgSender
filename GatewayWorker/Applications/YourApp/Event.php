@@ -30,11 +30,6 @@ class Event
         $exist = $db->select('id,status,uname')->from('tp_login')->where('uid=:uid and module=:module')->bindValues(array('uid'=>'212','module'=>'Shake'))->row();
         $L = Log::get_instance($logPath);
         $L->log(1,$exist);*/
-        //echo 'connect';
-        // 向当前client_id发送数据 
-        // Gateway::sendToClient($client_id, "Hello $client_id");
-        // 向所有人发送
-        // Gateway::sendToAll("$client_id login");
     }
     
    /**
@@ -52,7 +47,7 @@ class Event
         $message_data = json_decode($message, true);
         if(!$message_data)
         {
-            return ;
+	   return ;
         }
         // 根据类型执行不同的业务
         switch($message_data['type'])
@@ -72,6 +67,7 @@ class Event
                     foreach ($existuid as $k_i => $v_i) {
                         if($v_i != $client_id){
                             Gateway::unbindUid($client_id, $message_data['uid']);
+                            Gateway::leaveGroup($client_id, $message_data['room_id']);
                         }
                     }
                 }
@@ -82,32 +78,7 @@ class Event
                 Gateway::joinGroup($client_id, $message_data['room_id']);
                 $new_message = array('type'=>$message_data['type'], 'client_id'=>$client_id, 'client_name'=>htmlspecialchars($message_data['client_name']), 'time'=>date('Y-m-d H:i:s'));
 
-                Gateway::sendToUid($message_data['uid'], json_encode($new_message));
-
-                Gateway::sendToGroup($message_data['room_id'], json_encode($new_message));
-                /*// 把房间号昵称放到session中
-                $room_id = $message_data['room_id'];
-                $client_name = htmlspecialchars($message_data['client_name']);
-                $_SESSION['room_id'] = $room_id;
-                $_SESSION['client_name'] = $client_name;
-              
-                // 获取房间内所有用户列表 
-                $clients_list = Gateway::getClientInfoByGroup($room_id);
-                foreach($clients_list as $tmp_client_id=>$item)
-                {
-                    $clients_list[$tmp_client_id] = $item['client_name'];
-                }
-                $clients_list[$client_id] = $client_name;
-                
-                // 转播给当前房间的所有客户端，xx进入聊天室 message {type:login, client_id:xx, name:xx} 
-                $new_message = array('type'=>$message_data['type'], 'client_id'=>$client_id, 'client_name'=>htmlspecialchars($client_name), 'time'=>date('Y-m-d H:i:s'));
-                Gateway::sendToGroup($room_id, json_encode($new_message));
-                Gateway::joinGroup($client_id, $room_id);
-               
-                // 给当前用户发送用户列表 
-                $new_message['client_list'] = $clients_list;
-                Gateway::sendToCurrentClient(json_encode($new_message));*/
-                return;
+                return Gateway::sendToGroup($message_data['room_id'], json_encode($new_message));
                 
             // 客户端发言 message: {type:say, to_client_id:xx, content:xx}
             case 'say':
@@ -124,29 +95,52 @@ class Event
                     $new_message = array(
                         'type'=>'say',
                         'from_client_id'=>$client_id, 
-                        'from_client_name' =>$client_name,
+                        'from_client_name' =>$message_data['from_client_name'],
                         'to_client_id'=>$message_data['to_client_id'],
-                        'content'=>"<b>对你说: </b>".nl2br(htmlspecialchars($message_data['content'])),
+                        'content'=>nl2br(htmlspecialchars($message_data['content'])),
                         'time'=>date('Y-m-d H:i:s'),
                     );
-                    Gateway::sendToUid($message_data['to_client_id'],json_encode($new_message));
-                    /*Gateway::sendToClient($message_data['to_client_id'], json_encode($new_message));*/
-                    $new_message['content'] = "<b>你对".htmlspecialchars($message_data['to_client_name'])."说: </b>".nl2br(htmlspecialchars($message_data['content']));
-                    return Gateway::sendToUid($_SESSION['uid'],json_encode($new_message));
+                    return Gateway::sendToUid($message_data['to_client_id'],json_encode($new_message));
                 }
                 
                 $new_message = array(
                     'type'=>'say', 
                     'from_client_id'=>$client_id,
-                    'from_client_name' =>$client_name,
+                    'from_client_name' =>$message_data['from_client_name'],
                     'to_client_id'=>'all',
                     'content'=>nl2br(htmlspecialchars($message_data['content'])),
                     'time'=>date('Y-m-d H:i:s'),
                 );
-                return Gateway::sendToGroup(1 ,json_encode($new_message));
+                return Gateway::sendToGroup($message_data['room_id'] ,json_encode($new_message));
+	    case 'payNumAddMes':
+                $mem = new Memcache;
+                $mem->connect("172.16.0.126", 11211);
+                $count = $mem->get($message_data['room_id'].'count');
+                $count2 = $count+1;
+                $mem->set($message_data['room_id'].'count', $count2);
+                $new_message = array(
+                    'type'=>'say',
+                    'from_client_id'=>$client_id,
+                    'to_client_id'=>'all',
+                    'content'=>$count2,//nl2br(htmlspecialchars($message_data['content'])),
+                    'time'=>date('Y-m-d H:i:s'),
+                );
+                return Gateway::sendToGroup($message_data['room_id'] ,json_encode($new_message));
+                break;
+            case 'payNumCleanMes':
+                $mem = new Memcache;
+                $mem->connect("172.16.0.126", 11211);
+                $mem->set($message_data['room_id'].'count', 0);
+                $new_message = array(
+                    'type'=>'say',
+                    'from_client_id'=>$client_id,
+                    'to_client_id'=>'all',
+                    'content'=>0,//nl2br(htmlspecialchars($message_data['content'])),
+                    'time'=>date('Y-m-d H:i:s'),
+                );
+                return Gateway::sendToGroup($message_data['room_id'] ,json_encode($new_message));
+                break;
         }
-        // 向所有人发送 
-        // Gateway::sendToAll("$client_id said $message");
    }
    
    /**
@@ -165,7 +159,5 @@ class Event
            $new_message = array('type'=>'logout', 'from_client_id'=>$client_id, 'from_client_name'=>$_SESSION['client_name'], 'time'=>date('Y-m-d H:i:s'));
            Gateway::sendToGroup($room_id, json_encode($new_message));
        }
-       // 向所有人发送 
-       // GateWay::sendToAll("$client_id logout");
    }
 }

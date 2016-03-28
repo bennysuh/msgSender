@@ -47,14 +47,12 @@ haha
 =======
 http://www.workerman.net/gatewaydoc/
 
-使用GatewayWorker开发的项目
-=======
-## [tadpole](http://kedou.workerman.net/)  
-[Live demo](http://kedou.workerman.net/)  
-[Source code](https://github.com/walkor/workerman)  
-![workerman todpole](http://www.workerman.net/img/workerman-todpole.png)   
 
-## [chat room](http://chat.workerman.net/)  
-[Live demo](http://chat.workerman.net/)  
-[Source code](https://github.com/walkor/workerman-chat)  
-![workerman-chat](http://www.workerman.net/img/workerman-chat.png)  
+详见请见Applications/YourApp/start_gateway.php
+针对js的socket,需要开通websocket的端口
+针对ios的socket,需要开通tcp的端口,
+针对内部向人推送信息,需要开通text的端口
+
+在window中,需要使用window的文件夹,
+在linux中,需要使用linux的文件夹
+

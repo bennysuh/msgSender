@@ -22,7 +22,13 @@ require_once __DIR__ . '/../../Workerman/Autoloader.php';
 Autoloader::setRootPath(__DIR__);
 
 // gateway 进程，这里使用Text协议，可以用telnet测试
-$gateway = new Gateway("Websocket://0.0.0.0:8282");
+$gateway = new Gateway("Websocket://172.16.0.130:8282");
+/*
+$internal_gateway = new Gateway("Text://172.16.0.130:9292");
+$internal_gateway->name='internalGateway';
+$internal_gateway->startPort = 5600;
+$internal_gateway->registerAddress = '127.0.0.1:1238';
+*/
 // gateway名称，status方便查看
 $gateway->name = 'YourAppGateway';
 // gateway进程数
@@ -35,6 +41,17 @@ $gateway->startPort = 2900;
 // 服务注册地址
 $gateway->registerAddress = '127.0.0.1:1238';
 
+//管理员向用户发送消息端口
+$internal_gateway = new Gateway("Text://172.16.0.130:9292");
+$internal_gateway->name='internalGateway';
+$internal_gateway->startPort = 5600;
+$internal_gateway->registerAddress = '127.0.0.1:1238';
+
+//管理员向用户发送消息端口
+$tcp_gateway = new Gateway("tcp://172.16.0.130:9898");
+$tcp_gateway->name='InternetTcp';
+$tcp_gateway->startPort = 7600;
+$tcp_gateway->registerAddress = '127.0.0.1:1238';
 // 心跳间隔
 //$gateway->pingInterval = 10;
 // 心跳数据
